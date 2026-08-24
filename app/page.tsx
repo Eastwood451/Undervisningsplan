@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "../src/supabase";
 
 type ClassName = "5. klasse" | "7. klasse";
 type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; book: string; classwork: string; materials: string; review: string; doNow: string; homework: string; due: string };
 type LessonMaterial = { book: string; workbook: string; homework: string };
+type EditableEventFields = Pick<CalendarEvent, "book" | "classwork" | "materials" | "review" | "doNow" | "homework" | "due">;
+type CalendarOverrideRow = EditableEventFields & { id: string; grade: ClassName; event_date: string };
+
+const eventKey = (grade: ClassName, date: string) => `${grade}|${date}`;
 
 const MONTHS = ["Januar", "Februar", "Marts", "April", "Maj", "Juni", "Juli", "August", "September", "Oktober", "November", "December"];
 const WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -311,56 +317,172 @@ const EVENTS_7 = buildGrade7Events();
 
 function formatDate(date: Date) { return `${WEEKDAYS[(date.getDay() + 6) % 7]}. ${date.getDate()}. ${MONTHS[date.getMonth()].toLowerCase()}`; }
 
+function EventPanel({ event, grade, children }: { event: CalendarEvent; grade: ClassName; children?: React.ReactNode }) {
+  return <div className={`event chapter-${event.chapter} ${isSuccessorDate(event.date) ? "successor-event" : ""}`}>
+    <div className="event-topline"><span className="grade-badge">{grade}</span><span>{event.minutes} minutter</span></div>
+    {isSuccessorDate(event.date) && <span className="handover-badge">Plan til efterfølgeren</span>}
+    <h3>{event.title}</h3><span>{event.detail}</span>
+    <div className="materials"><b>Gennemgå i grundbogen</b><p>{event.book}</p><b>Arbejde i klassen</b><p>{event.classwork}</p></div>
+    <div className="preparation"><b>MATERIALER</b><p>{event.materials}</p></div>
+    <div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div>
+    {children}
+  </div>;
+}
+
 export default function Home() {
   const [grade, setGrade] = useState<ClassName>("5. klasse");
-  const [view, setView] = useState<"month" | "week">("month");
+  const [view, setView] = useState<"month" | "week" | "day">("month");
   const [cursor, setCursor] = useState(new Date(2026, 7, 24));
-  const events = grade === "5. klasse" ? EVENTS_5 : EVENTS_7;
+  const [overrides, setOverrides] = useState<Record<string, EditableEventFields>>({});
+  const [session, setSession] = useState<Session | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [syncError, setSyncError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<EditableEventFields | null>(null);
+  const [saving, setSaving] = useState(false);
+  const events5 = useMemo(() => EVENTS_5.map((event) => ({ ...event, ...overrides[eventKey("5. klasse", event.date)] })), [overrides]);
+  const events7 = useMemo(() => EVENTS_7.map((event) => ({ ...event, ...overrides[eventKey("7. klasse", event.date)] })), [overrides]);
+  const events = grade === "5. klasse" ? events5 : events7;
   const eventsByDate = useMemo(() => new Map(events.map((event) => [event.date, event])), [events]);
+  const events5ByDate = useMemo(() => new Map(events5.map((event) => [event.date, event])), [events5]);
+  const events7ByDate = useMemo(() => new Map(events7.map((event) => [event.date, event])), [events7]);
   const weekStart = monday(cursor);
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const gridStart = monday(first);
   const monthDays = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const previous = () => setCursor(view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1) : addDays(cursor, -7));
-  const next = () => setCursor(view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1) : addDays(cursor, 7));
+  const previous = () => setCursor(view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1) : addDays(cursor, view === "week" ? -7 : -1));
+  const next = () => setCursor(view === "month" ? new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1) : addDays(cursor, view === "week" ? 7 : 1));
+  const navigatorLabel = view === "month"
+    ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`
+    : view === "week"
+      ? `${formatDate(weekStart)} – ${formatDate(addDays(weekStart, 6))}`
+      : `${formatDate(cursor)} ${cursor.getFullYear()}`;
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) setSession(data.session); });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      if (nextSession) { setAuthOpen(false); setAuthMessage(""); }
+    });
+    supabase.from("calendar_overrides").select("id,grade,event_date,book,classwork,materials,review,do_now,homework,due").then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        setSyncError("Kalenderen kunne ikke hente gemte ændringer fra Supabase endnu.");
+        return;
+      }
+      const loaded: Record<string, EditableEventFields> = {};
+      for (const row of data ?? []) {
+        loaded[row.id] = { book: row.book, classwork: row.classwork, materials: row.materials, review: row.review, doNow: row.do_now, homework: row.homework, due: row.due };
+      }
+      setOverrides(loaded);
+      setSyncError("");
+    });
+    return () => { active = false; authListener.subscription.unsubscribe(); };
+  }, []);
+
+  const sendLoginLink = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAuthMessage("Sender login-link …");
+    const redirectTo = new URL(import.meta.env.BASE_URL, window.location.href).href;
+    const { error } = await supabase.auth.signInWithOtp({ email: authEmail.trim(), options: { emailRedirectTo: redirectTo } });
+    setAuthMessage(error ? `Login kunne ikke sendes: ${error.message}` : "Login-linken er sendt. Åbn den i din mail på denne enhed.");
+  };
+
+  const startEditing = (event: CalendarEvent, eventGrade: ClassName) => {
+    setEditingId(eventKey(eventGrade, event.date));
+    setDraft({ book: event.book, classwork: event.classwork, materials: event.materials, review: event.review, doNow: event.doNow, homework: event.homework, due: event.due });
+  };
+
+  const updateDraft = (field: keyof EditableEventFields, value: string) => {
+    setDraft((current) => current ? { ...current, [field]: value } : current);
+  };
+
+  const saveEvent = async (event: CalendarEvent, eventGrade: ClassName) => {
+    if (!session || !draft) return;
+    setSaving(true);
+    setSyncError("");
+    const id = eventKey(eventGrade, event.date);
+    const row = {
+      id, grade: eventGrade, event_date: event.date, book: draft.book, classwork: draft.classwork,
+      materials: draft.materials, review: draft.review, do_now: draft.doNow, homework: draft.homework,
+      due: draft.due, updated_by: session.user.id, updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from("calendar_overrides").upsert(row);
+    setSaving(false);
+    if (error) {
+      setSyncError(`Ændringen blev ikke gemt: ${error.message}`);
+      return;
+    }
+    setOverrides((current) => ({ ...current, [id]: draft }));
+    setEditingId(null);
+    setDraft(null);
+  };
+
+  const renderEvent = (event: CalendarEvent, eventGrade: ClassName) => {
+    const id = eventKey(eventGrade, event.date);
+    return <EventPanel event={event} grade={eventGrade}>
+      {session && editingId !== id && <button className="edit-event" onClick={() => startEditing(event, eventGrade)}>Redigér dagens plan</button>}
+      {session && editingId === id && draft && <form className="edit-form" onSubmit={(submitEvent) => { submitEvent.preventDefault(); saveEvent(event, eventGrade); }}>
+        <h4>Redigér {eventGrade} · {formatDate(new Date(`${event.date}T12:00:00`))}</h4>
+        <label>Grundbog<textarea value={draft.book} onChange={(change) => updateDraft("book", change.target.value)} /></label>
+        <label>Arbejde i klassen<textarea value={draft.classwork} onChange={(change) => updateDraft("classwork", change.target.value)} /></label>
+        <label>Materialer<textarea value={draft.materials} onChange={(change) => updateDraft("materials", change.target.value)} /></label>
+        <label>Til i dag<textarea value={draft.review} onChange={(change) => updateDraft("review", change.target.value)} /></label>
+        <label>Derefter<textarea value={draft.doNow} onChange={(change) => updateDraft("doNow", change.target.value)} /></label>
+        <label>Lektie<textarea value={draft.homework} onChange={(change) => updateDraft("homework", change.target.value)} /></label>
+        <label>Afleveringsdato<input value={draft.due} onChange={(change) => updateDraft("due", change.target.value)} /></label>
+        <div className="edit-actions"><button type="button" onClick={() => { setEditingId(null); setDraft(null); }}>Annuller</button><button className="save" disabled={saving}>{saving ? "Gemmer …" : "Gem i Supabase"}</button></div>
+      </form>}
+    </EventPanel>;
+  };
 
   return <main>
     <header className="hero">
       <div><p className="eyebrow">SKOLEÅRET 2026 / 27</p><h1>Min undervisningskalender</h1><p>Planlægning, ferier og matematik samlet ét sted.</p></div>
-      <div className="class-switch" aria-label="Vælg klasse">
+      {view === "day" ? <div className="all-classes-badge">Begge klasser</div> : <div className="class-switch" aria-label="Vælg klasse">
         {(["5. klasse", "7. klasse"] as ClassName[]).map((name) => <button key={name} onClick={() => setGrade(name)} className={grade === name ? "active" : ""}>{name}</button>)}
-      </div>
+      </div>}
     </header>
 
     <section className="toolbar" aria-label="Kalenderstyring">
-      <div className="view-switch"><button onClick={() => setView("month")} className={view === "month" ? "selected" : ""}>Måned</button><button onClick={() => setView("week")} className={view === "week" ? "selected" : ""}>Uge</button></div>
-      <div className="navigator"><button aria-label="Forrige" onClick={previous}>‹</button><strong>{view === "month" ? `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}` : `${formatDate(weekStart)} – ${formatDate(addDays(weekStart, 6))}`}</strong><button aria-label="Næste" onClick={next}>›</button></div>
-      <button className="today" onClick={() => setCursor(new Date(2026, 7, 24))}>Til denne uge</button>
+      <div className="view-switch"><button onClick={() => setView("month")} className={view === "month" ? "selected" : ""}>Måned</button><button onClick={() => setView("week")} className={view === "week" ? "selected" : ""}>Uge</button><button onClick={() => setView("day")} className={view === "day" ? "selected" : ""}>Dag</button></div>
+      <div className="navigator"><button aria-label="Forrige" onClick={previous}>‹</button><strong>{navigatorLabel}</strong><button aria-label="Næste" onClick={next}>›</button></div>
+      <button className="today" onClick={() => setCursor(new Date(2026, 7, 24))}>{view === "day" ? "I dag" : "Til denne uge"}</button>
     </section>
 
     {view === "month" ? <section className="calendar-card">
       <div className="weekday-row">{WEEKDAYS.map((day) => <div key={day}>{day}</div>)}</div>
       <div className="month-grid">{monthDays.map((day) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day); const outside = day.getMonth() !== cursor.getMonth();
-        return <button key={iso(day)} className={`day ${outside ? "outside" : ""} ${holiday ? "holiday" : ""} ${event ? "planned" : ""} ${event && isSuccessorDate(event.date) ? "successor" : ""}`} onClick={() => { setCursor(day); setView("week"); }}>
+        return <button key={iso(day)} className={`day ${outside ? "outside" : ""} ${holiday ? "holiday" : ""} ${event ? "planned" : ""} ${event && isSuccessorDate(event.date) ? "successor" : ""}`} onClick={() => { setCursor(day); setView("day"); }}>
           <span className="day-number">{day.getDate()}</span>{holiday && <span className="holiday-label">{holiday}</span>}{event && <span className="event-pill">{isSuccessorDate(event.date) ? "EFTERFØLGER" : "M"} · {event.minutes} min</span>}
         </button>;
       })}</div>
-    </section> : <section className="week-card">
+    </section> : view === "week" ? <section className="week-card">
       {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((day, dayIndex) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day);
         return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}>
           <div className="week-date"><span>{WEEKDAYS[dayIndex]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>
-          {holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter} ${isSuccessorDate(event.date) ? "successor-event" : ""}`}>
-            <p>{event.minutes} minutter</p>{isSuccessorDate(event.date) && <span className="handover-badge">Plan til efterfølgeren</span>}<h3>{event.title}</h3><span>{event.detail}</span>
-            <div className="materials"><b>Gennemgå i grundbogen</b><p>{event.book}</p><b>Arbejde i klassen</b><p>{event.classwork}</p></div>
-            <div className="preparation"><b>MATERIALER</b><p>{event.materials}</p></div>
-            <div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div>
-          </div> : <p className="no-event">Ingen fast matematiktime</p>}
+          {holiday ? <p className="holiday-text">{holiday}</p> : event ? <EventPanel event={event} grade={grade} /> : <p className="no-event">Ingen fast matematiktime</p>}
         </article>;
       })}
+    </section> : <section className="day-card">
+      <header className="day-heading"><p className="eyebrow">DAGENS UNDERVISNING</p><h2>{formatDate(cursor)} <span>{cursor.getFullYear()}</span></h2>{inHoliday(cursor) && <p className="holiday-text">{inHoliday(cursor)}</p>}</header>
+      <div className="day-class-grid">
+        {(["5. klasse", "7. klasse"] as ClassName[]).map((className) => {
+          const event = className === "5. klasse" ? events5ByDate.get(iso(cursor)) : events7ByDate.get(iso(cursor));
+          return <article className="day-class" key={className}>
+            <h3 className="day-class-title">{className}</h3>
+            {inHoliday(cursor) ? <p className="no-event">Ingen undervisning på grund af skoleferie.</p> : event ? <EventPanel event={event} grade={className} /> : <p className="no-event">Ingen fast matematiktime denne dag.</p>}
+          </article>;
+        })}
+      </div>
     </section>}
 
-    <section className="legend"><span><i className="dot maths" /> Matematik – {grade}</span><span><i className="dot holiday-dot" /> Skoleferie</span><span><i className="dot successor-dot" /> Efterfølgerens plan fra 1. april 2027</span><span>{grade === "5. klasse" ? "Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min." : "Fast skema: mandag 9.00–9.45 · tirsdag 9.00–9.45 · torsdag 10.50–11.35 · fredag 8.30–9.45. Fredag er øveblok og tæller ikke som en af kapitlets 12 lektioner."}</span></section>
+    <section className="legend"><span><i className="dot maths" /> {view === "day" ? "Begge klasser" : `Matematik – ${grade}`}</span><span><i className="dot holiday-dot" /> Skoleferie</span><span><i className="dot successor-dot" /> Efterfølgerens plan fra 1. april 2027</span><span>{view === "day" ? "Dagsvisningen samler 5. og 7. klasse på den valgte dato." : grade === "5. klasse" ? "Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min." : "Fast skema: mandag 9.00–9.45 · tirsdag 9.00–9.45 · torsdag 10.50–11.35 · fredag 8.30–9.45. Fredag er øveblok og tæller ikke som en af kapitlets 12 lektioner."}</span></section>
   </main>;
 }
