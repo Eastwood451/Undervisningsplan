@@ -8,7 +8,6 @@ type ClassName = "5. klasse" | "7. klasse";
 type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; book: string; classwork: string; materials: string; review: string; doNow: string; homework: string; due: string };
 type LessonMaterial = { book: string; workbook: string; homework: string };
 type EditableEventFields = Pick<CalendarEvent, "book" | "classwork" | "materials" | "review" | "doNow" | "homework" | "due">;
-type CalendarOverrideRow = EditableEventFields & { id: string; grade: ClassName; event_date: string };
 
 const eventKey = (grade: ClassName, date: string) => `${grade}|${date}`;
 
@@ -443,10 +442,23 @@ export default function Home() {
   return <main>
     <header className="hero">
       <div><p className="eyebrow">SKOLEÅRET 2026 / 27</p><h1>Min undervisningskalender</h1><p>Planlægning, ferier og matematik samlet ét sted.</p></div>
-      {view === "day" ? <div className="all-classes-badge">Begge klasser</div> : <div className="class-switch" aria-label="Vælg klasse">
-        {(["5. klasse", "7. klasse"] as ClassName[]).map((name) => <button key={name} onClick={() => setGrade(name)} className={grade === name ? "active" : ""}>{name}</button>)}
-      </div>}
+      <div className="hero-tools">
+        {view === "day" ? <div className="all-classes-badge">Begge klasser</div> : <div className="class-switch" aria-label="Vælg klasse">
+          {(["5. klasse", "7. klasse"] as ClassName[]).map((name) => <button key={name} onClick={() => setGrade(name)} className={grade === name ? "active" : ""}>{name}</button>)}
+        </div>}
+        <div className="account-tools">
+          {session ? <><span>Redigering er aktiv</span><button onClick={() => supabase.auth.signOut()}>Log ud</button></> : <button className="login-button" onClick={() => setAuthOpen((open) => !open)}>Redigér kalenderen</button>}
+        </div>
+      </div>
     </header>
+
+    {authOpen && !session && <form className="auth-panel" onSubmit={sendLoginLink}>
+      <div><b>Log ind som redaktør</b><p>Skriv den mailadresse, der må redigere planen. Supabase sender et sikkert login-link.</p></div>
+      <label>Mailadresse<input type="email" required value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="navn@eksempel.dk" /></label>
+      <button>Send login-link</button>
+      {authMessage && <p className="auth-message">{authMessage}</p>}
+    </form>}
+    {syncError && <p className="sync-error">{syncError}</p>}
 
     <section className="toolbar" aria-label="Kalenderstyring">
       <div className="view-switch"><button onClick={() => setView("month")} className={view === "month" ? "selected" : ""}>Måned</button><button onClick={() => setView("week")} className={view === "week" ? "selected" : ""}>Uge</button><button onClick={() => setView("day")} className={view === "day" ? "selected" : ""}>Dag</button></div>
@@ -467,7 +479,7 @@ export default function Home() {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day);
         return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}>
           <div className="week-date"><span>{WEEKDAYS[dayIndex]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>
-          {holiday ? <p className="holiday-text">{holiday}</p> : event ? <EventPanel event={event} grade={grade} /> : <p className="no-event">Ingen fast matematiktime</p>}
+          {holiday ? <p className="holiday-text">{holiday}</p> : event ? renderEvent(event, grade) : <p className="no-event">Ingen fast matematiktime</p>}
         </article>;
       })}
     </section> : <section className="day-card">
@@ -477,7 +489,7 @@ export default function Home() {
           const event = className === "5. klasse" ? events5ByDate.get(iso(cursor)) : events7ByDate.get(iso(cursor));
           return <article className="day-class" key={className}>
             <h3 className="day-class-title">{className}</h3>
-            {inHoliday(cursor) ? <p className="no-event">Ingen undervisning på grund af skoleferie.</p> : event ? <EventPanel event={event} grade={className} /> : <p className="no-event">Ingen fast matematiktime denne dag.</p>}
+            {inHoliday(cursor) ? <p className="no-event">Ingen undervisning på grund af skoleferie.</p> : event ? renderEvent(event, className) : <p className="no-event">Ingen fast matematiktime denne dag.</p>}
           </article>;
         })}
       </div>
