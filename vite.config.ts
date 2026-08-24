@@ -1,11 +1,9 @@
-import vinext from "vinext";
 import { defineConfig } from "vite";
-
-const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  server: isCodexSeatbeltSandbox
-    ? { watch: { useFsEvents: false, usePolling: true } }
-    : undefined,
-  plugins: [vinext()],
+  plugins: [react()],
+  build: {
+    outDir: "local-build",
+  },
 });

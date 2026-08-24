@@ -35,7 +35,8 @@ const CHAPTERS_7 = [
 ] as const;
 const TRAINING_7_START = [2, 6, 12, 20];
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
 const monday = (d: Date) => addDays(d, -((d.getDay() + 6) % 7));
 const inHoliday = (d: Date) => HOLIDAYS.find(([from, to]) => iso(d) >= from && iso(d) <= to)?.[2];
@@ -157,9 +158,9 @@ export default function Home() {
         </button>;
       })}</div>
     </section> : <section className="week-card">
-      {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((day) => {
+      {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((day, dayIndex) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day);
-        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}><div className="week-date"><span>{WEEKDAYS[i]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>{holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}><p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span><div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div></div> : <p className="no-event">Ingen fast matematiktime</p>}</article>;
+        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}><div className="week-date"><span>{WEEKDAYS[dayIndex]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>{holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}><p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span><div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div></div> : <p className="no-event">Ingen fast matematiktime</p>}</article>;
       })}
     </section>}
 
