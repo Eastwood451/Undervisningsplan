@@ -27,6 +27,13 @@ const CHAPTERS = [
   ["Data og chance", "s. 144–164", ["Samtalebillede og data", "De sidste tigre og Fuglested dyrehandel", "Terning Royale og undersøgelser", "Viden om data og chance", "Breddeopgaver", "Eftertanken og EVA"]],
 ] as const;
 const TRAINING_START = [4, 12, 20, 28, 36, 44, 50, 56];
+const CHAPTERS_7 = [
+  ["Tallene", "grundbog s. 4–21"], ["Forhold og figurer", "grundbog s. 22–41"],
+  ["Regn med tallene", "grundbog s. 42–67"], ["Data og chance", "grundbog s. 68–89"],
+  ["Formler og ligninger", "grundbog s. 90–107"], ["Flade og rum", "grundbog s. 108–123"],
+  ["Sammenhænge og grafer", "grundbog s. 124–141"], ["Mønstre og figurer", "grundbog s. 142–slut"],
+] as const;
+const TRAINING_7_START = [2, 6, 12, 20];
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
@@ -82,13 +89,43 @@ function buildGrade5Events(): CalendarEvent[] {
 
 const EVENTS_5 = buildGrade5Events();
 
+function buildGrade7Events(): CalendarEvent[] {
+  const raw: Omit<CalendarEvent, "review" | "doNow" | "homework" | "due">[] = [];
+  let date = new Date(2026, 7, 24); let chapter = 0; let lesson = 1;
+  while (chapter < CHAPTERS_7.length) {
+    if (isTeachingDay(date) && [1, 2, 4, 5].includes(date.getDay())) {
+      const [name, pages] = CHAPTERS_7[chapter];
+      const minutes = date.getDay() === 5 ? 75 : 45;
+      raw.push({ date: iso(date), minutes, chapter: chapter + 1, title: `Kapitel ${chapter + 1}: ${name}`, detail: `Lektion ${lesson} af 12 · ${pages}` });
+      lesson += 1;
+      if (lesson === 13) { chapter += 1; lesson = 1; }
+    }
+    date = addDays(date, 1);
+  }
+  return raw.map((event, index) => {
+    const lesson = Number(event.detail.match(/Lektion (\d+)/)?.[1] ?? 1);
+    const trainingStart = TRAINING_7_START[event.chapter - 1];
+    const trainingPage = trainingStart ? trainingStart + Math.min(3, Math.floor((lesson - 1) / 3)) : null;
+    const next = raw[index + 1]; const dueDate = next ? new Date(`${next.date}T12:00:00`) : null;
+    const homework = lesson === 12 ? "Ingen ny lektie. Skriv i stedet en kort faglig eftertanke i hæftet." : trainingPage ? `Træningshæfte s. ${trainingPage}: lav dagens opgaver og vis mellemregning.` : "Grundbog: genlæs dagens eksempel og skriv tre linjer med regel, eksempel og forklaring i hæftet.";
+    return {
+      ...event,
+      review: index === 0 ? "Ingen lektie — første time i 7. klasse-forløbet." : raw[index - 1].chapter === event.chapter ? "Gennemgå først den afleverede lektie. Eleverne retter én fejl med en anden farve." : "Ingen lektie fra et nyt kapitel. Hent nøgleord frem fra det foregående kapitel.",
+      doNow: trainingPage ? `Grundbog ${event.detail}. Derefter træningshæfte s. ${trainingPage}. Fredag bruges de ekstra 30 minutter til forklaring, makkerkontrol og én grubler.` : `Grundbog ${event.detail}. Eleverne løser dagens opgaver i hæftet med fuld forklaring. Fredag bruges de ekstra 30 minutter til en udfordringsopgave eller GeoGebra.`,
+      homework, due: dueDate ? `${WEEKDAYS[(dueDate.getDay() + 6) % 7]}. ${dueDate.getDate()}. ${MONTHS[dueDate.getMonth()].toLowerCase()}` : "næste undervisningsdag",
+    };
+  });
+}
+
+const EVENTS_7 = buildGrade7Events();
+
 function formatDate(date: Date) { return `${WEEKDAYS[(date.getDay() + 6) % 7]}. ${date.getDate()}. ${MONTHS[date.getMonth()].toLowerCase()}`; }
 
 export default function Home() {
   const [grade, setGrade] = useState<ClassName>("5. klasse");
   const [view, setView] = useState<"month" | "week">("month");
   const [cursor, setCursor] = useState(new Date(2026, 7, 24));
-  const events = grade === "5. klasse" ? EVENTS_5 : [];
+  const events = grade === "5. klasse" ? EVENTS_5 : EVENTS_7;
   const eventsByDate = useMemo(() => new Map(events.map((event) => [event.date, event])), [events]);
   const weekStart = monday(cursor);
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -111,7 +148,7 @@ export default function Home() {
       <button className="today" onClick={() => setCursor(new Date(2026, 7, 24))}>Til denne uge</button>
     </section>
 
-    {grade === "7. klasse" ? <section className="empty"><p className="eyebrow">7. KLASSE · MATERIALER KLAR</p><h2>Jeg mangler kun dit skema</h2><p>Grundbogen begynder med kapitlet <strong>Tallene</strong> (s. 4), og træningshæftet er registreret. Skriv blot hvilke ugedage og hvor mange minutter du har 7. klasse, så får den samme daglige struktur: “Til i dag” → gennemgang → aktivitet → “Til næste gang”.</p></section> : view === "month" ? <section className="calendar-card">
+    {view === "month" ? <section className="calendar-card">
       <div className="weekday-row">{WEEKDAYS.map((day) => <div key={day}>{day}</div>)}</div>
       <div className="month-grid">{monthDays.map((day) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day); const outside = day.getMonth() !== cursor.getMonth();
@@ -126,6 +163,6 @@ export default function Home() {
       })}
     </section>}
 
-    <section className="legend"><span><i className="dot maths" /> Matematik – 5. klasse</span><span><i className="dot holiday-dot" /> Skoleferie</span><span>Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min.</span></section>
+    <section className="legend"><span><i className="dot maths" /> Matematik – {grade}</span><span><i className="dot holiday-dot" /> Skoleferie</span><span>{grade === "5. klasse" ? "Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min." : "Fast skema: mandag 9.00–9.45 · tirsdag 9.00–9.45 · torsdag 10.50–11.35 · fredag 8.30–9.45."}</span></section>
   </main>;
 }
