@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 type ClassName = "5. klasse" | "7. klasse";
-type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; book: string; classwork: string; review: string; doNow: string; homework: string; due: string };
+type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; book: string; classwork: string; materials: string; review: string; doNow: string; homework: string; due: string };
 type LessonMaterial = { book: string; workbook: string; homework: string };
 
 const MONTHS = ["Januar", "Februar", "Marts", "April", "Maj", "Juni", "Juli", "August", "September", "Oktober", "November", "December"];
@@ -111,8 +111,69 @@ function combineMaterial(materials: LessonMaterial[], key: "book" | "workbook") 
   return materials.map((material) => material[key]).join(" Derefter: ");
 }
 
+const GRADE_5_EQUIPMENT = [
+  "lommeregnere og blyanter",
+  "brøkbrikker eller foldet papir, sakse og farveblyanter",
+  "linealer, vinkelmålere, passere og ternet papir",
+  "linealer og et stort koordinatsystem på tavlen",
+  "lommeregnere og pris-/procentkort skrevet på tavlen",
+  "linealer, målebånd og mindst tre forskellige papkasser",
+  "tændstikker eller centicubes til figurmønstre",
+  "to terninger pr. makkerpar og farveblyanter",
+] as const;
+
+function materialsForGrade5(chapter: number, lesson: number, practice: boolean): string {
+  if (chapter === 1) {
+    if (practice) return "PRINT: De nødvendige sider fra 24-Laerer-Hjaelpeark-samlet.pdf — kun til elever, der mangler støtte. DIGITALT: Åbn 18-GeoGebra-Hvad-sker-der-med-tallet.ggb, 19-GeoGebra-Hvordan-skrives-tallet.ggb og 20-GeoGebra-Afrund-tallene.ggb. LÆRER: Hav 28-Laerer-Facit-kernebog.pdf åbent; vis ikke facit på forhånd.";
+    const preparations = [
+      "PRINT: Intet. DIGITALT: Intet. LÆG FREM: Grundbog og øvehæfte til hver elev samt blyanter.",
+      "PRINT: 01-Hjaelpeark-Europas-hovedstaeder-1.pdf til elever, der har brug for støtte. DIGITALT: Åbn 05-Regneark-Europas-hovedstaeder.xlsx på lærercomputeren. LÆG FREM: Lommeregnere.",
+      "PRINT: 02-Hjaelpeark-Europas-hovedstaeder-2.pdf til elever, der har brug for støtte. DIGITALT: Åbn 05-Regneark-Europas-hovedstaeder.xlsx. LÆG FREM: Lommeregnere.",
+      "PRINT: 03-Hjaelpeark-Europas-hovedstaeder-3.pdf til elever, der har brug for støtte. DIGITALT: Åbn 21-GeoGebra-Populaere-hovedstaeder.ggb og afprøv filen før timen. LÆG FREM: Én computer pr. makkerpar, hvis eleverne selv skal bruge filen.",
+      "PRINT: 04-Hjaelpeark-Europas-hovedstaeder-4.pdf til elever, der har brug for støtte. DIGITALT: Åbn 21-GeoGebra-Populaere-hovedstaeder.ggb. LÆG FREM: Lommeregnere.",
+      "PRINT: Intet. DIGITALT: Åbn 06-Regneark-Pizzaria-Bellano.xlsx og kontrollér, at det kan vises på projektoren. LÆG FREM: Lommeregnere.",
+      "PRINT: Intet. DIGITALT: Åbn 06-Regneark-Pizzaria-Bellano.xlsx. LÆG FREM: Lommeregnere og kladdepapir.",
+      "PRINT: Intet. DIGITALT: Åbn 06-Regneark-Pizzaria-Bellano.xlsx. LÆG FREM: Lommeregnere; eleverne skal kunne vise mellemregninger på papir.",
+      "PRINT: Intet. DIGITALT: Åbn 07-Regneark-Vandforbrug.xlsx og 18-GeoGebra-Hvad-sker-der-med-tallet.ggb; afprøv begge før timen. LÆG FREM: Én computer pr. makkerpar og lommeregnere.",
+      "PRINT: 08-Viden-om-Regn-med-store-tal.pdf til elever, der har brug for et løst opslagsark. DIGITALT: Åbn 19-GeoGebra-Hvordan-skrives-tallet.ggb og 20-GeoGebra-Afrund-tallene.ggb. LÆG FREM: Én computer pr. makkerpar.",
+      "PRINT: Fem eksemplarer af 09-Serviceark-Taltavle.pdf og fem af 10-Serviceark-Gangetavle.pdf til støttebordet. DIGITALT: Intet. LÆRER: Hav 28-Laerer-Facit-kernebog.pdf åbent på din egen skærm.",
+      "PRINT: 25-Laerer-EVA-ark.pdf — ét eksemplar pr. elev. DIGITALT: Intet. LÆRER: Læs 26-Laerer-Vejledning-til-EVA-ark.pdf før timen, og hav 27-Laerer-Facit-EVA-ark.pdf klar uden at vise det til eleverne.",
+    ];
+    return preparations[lesson - 1];
+  }
+
+  const folder = `Kontext5/chapter_${chapter}`;
+  const equipment = GRADE_5_EQUIPMENT[chapter - 1];
+  if (practice) return `PRINT: Relevante støttesider fra ${folder}/teacher_kontext5_kap${chapter}_hjaelpeark.pdf — kun til elever, der stadig mangler en metode. DIGITALT: Ingen GeoGebra-fil til dette kapitel er registreret i projektmappen. LÆRER: Hav kapitlets facit åbent. LÆG FREM: ${equipment}.`;
+  if (lesson === 1) return `PRINT: Intet. DIGITALT: Åbn ${folder}/teacher_kontext5_kap${chapter}_læringsmål_til_årsplan.pdf på din egen skærm. LÆG FREM: ${equipment}.`;
+  if (lesson >= 2 && lesson <= 8) return `PRINT: De relevante sider fra ${folder}/teacher_kontext5_kap${chapter}_hjaelpeark.pdf til de elever, der har brug for støtte; ikke et klassesæt. DIGITALT: Ingen GeoGebra-fil til denne dag er registreret i projektmappen. LÆG FREM: ${equipment}.`;
+  if (lesson === 12) return `PRINT: ${folder}/teacher_kontext5_kap${chapter}_evaark.pdf — ét eksemplar pr. elev. DIGITALT: Intet. LÆRER: Læs teacher_kontext5_kap${chapter}-EVAvejledning.pdf, og hav teacher_kontext5_kap${chapter}_facit_til_eva-ark.pdf klar uden at vise det. LÆG FREM: ${equipment}.`;
+  return `PRINT: Intet. DIGITALT: Ingen GeoGebra-fil til denne dag er registreret i projektmappen. LÆRER: Hav ${folder}/teacher_kontext5_kap${chapter}_facit_kernebog.pdf åbent på din egen skærm. LÆG FREM: ${equipment}.`;
+}
+
+const GRADE_7_EQUIPMENT = [
+  "lommeregnere og kladdepapir",
+  "linealer, vinkelmålere, passere og målebånd",
+  "lommeregnere og kladdepapir",
+  "to terninger pr. makkerpar, linealer og farveblyanter",
+  "lommeregnere og små kort til formler/ligninger",
+  "linealer, målebånd og kasser eller prismer",
+  "linealer, ternet papir og en computer pr. makkerpar",
+  "centicubes eller tændstikker, linealer og ternet papir",
+] as const;
+
+function materialsForGrade7(chapter: number, lesson: number, practice: boolean): string {
+  const equipment = GRADE_7_EQUIPMENT[chapter - 1];
+  if (practice) return `PRINT: Intet — brug breddeopgaverne i grundbogen. DIGITALT: Der er ingen 7.-klasse-GeoGebra-fil registreret i projektmappen til denne dag. LÆG FREM: ${equipment}.`;
+  if (chapter === 2 && lesson <= 7) return "PRINT: Intet. DIGITALT: Ingen GeoGebra-fil er registreret til dagen. LÆG FREM: Lineal, vinkelmåler og passer til hver elev, målebånd til hvert makkerpar og én lommeregner pr. elev.";
+  if (chapter === 4 && lesson >= 3 && lesson <= 8) return "PRINT: Intet. DIGITALT: Klargør et tomt regneark på projektoren til klassens data; ingen færdig fil er registreret i projektmappen. LÆG FREM: To terninger pr. makkerpar og farveblyanter.";
+  if (chapter === 7 && lesson >= 3 && lesson <= 8) return "PRINT: Ternet papir til de elever, der ikke skriver i kladdehæfte. DIGITALT: Åbn et tomt GeoGebra-vindue og kontrollér akser samt gitter før timen; der er ingen færdig .ggb-fil i projektmappen. LÆG FREM: Linealer og én computer pr. makkerpar.";
+  if (lesson === 12) return `PRINT: Intet — der ligger ikke et særskilt 7.-klasse-EVA-ark i projektmappen. DIGITALT: Intet. LÆG FREM: ${equipment}; brug elevernes grundbog og øvehæfte til evalueringen.`;
+  return `PRINT: Intet. DIGITALT: Ingen GeoGebra-fil til denne dag er registreret i projektmappen. LÆG FREM: ${equipment}.`;
+}
+
 function buildGrade5Events(): CalendarEvent[] {
-  const raw: Array<Omit<CalendarEvent, "book" | "classwork" | "review" | "doNow" | "homework" | "due"> & { lesson: number; units: number; practice: boolean }> = [];
+  const raw: Array<Omit<CalendarEvent, "book" | "classwork" | "materials" | "review" | "doNow" | "homework" | "due"> & { lesson: number; units: number; practice: boolean }> = [];
   let date = new Date(2026, 7, 20);
   let chapter = 0;
   let lesson = 1;
@@ -168,6 +229,7 @@ function buildGrade5Events(): CalendarEvent[] {
       ...event,
       book: combineMaterial(materials, "book"),
       classwork,
+      materials: materialsForGrade5(event.chapter, event.lesson, event.practice),
       review: index === 0 ? "Ingen lektie — dette er årets første planlagte KonteXt+-lektion." : previousHomework ? `Til i dag havde eleverne: ${previousHomework} Gennemgå opgaverne først; eleverne retter fejl med en anden farve.` : "Ingen lektie til i dag.",
       doNow: event.practice
         ? `1) Gennemgå og ret lektien i øvehæftet. 2) Færdiggør i klassen: ${classwork} 3) Brug de resterende minutter til makkerforklaring, GeoGebra eller det angivne ekstraark. ${extra}`
@@ -181,7 +243,7 @@ function buildGrade5Events(): CalendarEvent[] {
 const EVENTS_5 = buildGrade5Events();
 
 function buildGrade7Events(): CalendarEvent[] {
-  const raw: Array<Omit<CalendarEvent, "book" | "classwork" | "review" | "doNow" | "homework" | "due"> & { lesson: number; practice: boolean }> = [];
+  const raw: Array<Omit<CalendarEvent, "book" | "classwork" | "materials" | "review" | "doNow" | "homework" | "due"> & { lesson: number; practice: boolean }> = [];
   let date = new Date(2026, 7, 24); let chapter = 0; let lesson = 1; let consolidation = 0;
   while (chapter < CHAPTERS_7.length) {
     if (isTeachingDay(date) && [1, 2, 4, 5].includes(date.getDay())) {
@@ -234,6 +296,7 @@ function buildGrade7Events(): CalendarEvent[] {
       ...event,
       book: material.book,
       classwork,
+      materials: materialsForGrade7(event.chapter, event.lesson, event.practice),
       review: index === 0 ? "Ingen lektie — første time i 7. klasse-forløbet." : previousHomework ? `Til i dag havde eleverne: ${previousHomework} Gennemgå svarene først; eleverne retter én fejl med en anden farve.` : "Ingen lektie til i dag.",
       doNow: event.practice
         ? `1) Gennemgå og ret torsdagens lektie i øvehæftet. 2) Klassen arbejder med ${classwork} 3) Brug resten af tiden til makkerkontrol og en mundtlig faglig forklaring.`
@@ -291,6 +354,7 @@ export default function Home() {
           {holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter} ${isSuccessorDate(event.date) ? "successor-event" : ""}`}>
             <p>{event.minutes} minutter</p>{isSuccessorDate(event.date) && <span className="handover-badge">Plan til efterfølgeren</span>}<h3>{event.title}</h3><span>{event.detail}</span>
             <div className="materials"><b>Gennemgå i grundbogen</b><p>{event.book}</p><b>Arbejde i klassen</b><p>{event.classwork}</p></div>
+            <div className="preparation"><b>MATERIALER</b><p>{event.materials}</p></div>
             <div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div>
           </div> : <p className="no-event">Ingen fast matematiktime</p>}
         </article>;
