@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 type ClassName = "5. klasse" | "7. klasse";
-type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number };
+type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; review: string; doNow: string; homework: string; due: string };
 
 const MONTHS = ["Januar", "Februar", "Marts", "April", "Maj", "Juni", "Juli", "August", "September", "Oktober", "November", "December"];
 const WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -26,6 +26,7 @@ const CHAPTERS = [
   ["Tal og bogstaver", "s. 126–143", ["Samtalebillede og mønstre", "Nyt torv, Thomsens tal og indhegning", "Skridtformel og figurtal", "Viden om variable og ligninger", "Breddeopgaver", "Eftertanken og EVA"]],
   ["Data og chance", "s. 144–164", ["Samtalebillede og data", "De sidste tigre og Fuglested dyrehandel", "Terning Royale og undersøgelser", "Viden om data og chance", "Breddeopgaver", "Eftertanken og EVA"]],
 ] as const;
+const TRAINING_START = [4, 12, 20, 28, 36, 44, 50, 56];
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
@@ -36,7 +37,7 @@ const phaseFor = (lesson: number) => lesson <= 2 ? 0 : lesson <= 6 ? 1 : lesson 
 const phaseEnd = (lesson: number) => [2, 6, 8, 9, 11, 12].find((end) => lesson <= end) ?? 12;
 
 function buildGrade5Events(): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
+  const raw: Omit<CalendarEvent, "review" | "doNow" | "homework" | "due">[] = [];
   let date = new Date(2026, 7, 20);
   let chapter = 0;
   let lesson = 1;
@@ -45,7 +46,7 @@ function buildGrade5Events(): CalendarEvent[] {
       const capacity = date.getDay() === 1 ? 1 : 2;
       const units = Math.min(capacity, 13 - lesson, phaseEnd(lesson) - lesson + 1);
       const [name, pages, phases] = CHAPTERS[chapter];
-      events.push({
+      raw.push({
         date: iso(date), minutes: units * 45, chapter: chapter + 1,
         title: `Kapitel ${chapter + 1}: ${name}`,
         detail: `Lektion ${lesson}${units === 2 ? `–${lesson + 1}` : ""} af 12 · ${phases[phaseFor(lesson)]} · ${pages}`,
@@ -55,7 +56,28 @@ function buildGrade5Events(): CalendarEvent[] {
     }
     date = addDays(date, 1);
   }
-  return events;
+  return raw.map((event, index) => {
+    const lessonMatch = event.detail.match(/Lektion (\d+)/);
+    const lesson = Number(lessonMatch?.[1] ?? 1);
+    const trainingPage = TRAINING_START[event.chapter - 1] + Math.min(4, Math.floor((lesson - 1) / 2));
+    const next = raw[index + 1];
+    const due = next ? new Date(`${next.date}T12:00:00`) : null;
+    const extra = event.chapter === 1 && lesson >= 4 && lesson <= 8
+      ? "Brug ekstraarket ‘Hjælpeark Europas hovedstæder’ til elever, der ikke kan komme i gang."
+      : lesson === 9 ? "Brug kapitlets ‘Viden om’-side og lad eleverne markere regel og eksempel med to farver."
+      : lesson === 12 ? "Brug EVA-arket og facit kun efter eleverne har afleveret deres eget svar."
+      : "Brug ingen ekstraark, medmindre en elev har brug for et hjælpeark.";
+    const homework = lesson === 12
+      ? "Ingen ny lektie. Kapitlet afsluttes med EVA og eftertanke."
+      : `Træningshæfte s. ${trainingPage}: lav de opgaver, der hører til dagens emne. Skriv mellemregning i hæftet.`;
+    return {
+      ...event,
+      review: index === 0 ? "Ingen lektie — dette er årets første planlagte KonteXt+-lektion." : raw[index - 1].chapter === event.chapter ? `Træningshæfte: ${TRAINING_START[event.chapter - 1] + Math.min(4, Math.floor((Math.max(1, lesson - 2) - 1) / 2))}. Gennemgå svar og rettearbejde først.` : "Ingen lektie fra et nyt kapitel. Brug 5 minutter på at hente viden frem fra det afsluttede kapitel.",
+      doNow: `Grundbog ${event.detail}. Derefter arbejder eleverne i træningshæftet på s. ${trainingPage}. ${extra}`,
+      homework,
+      due: due ? `${WEEKDAYS[(due.getDay() + 6) % 7]}. ${due.getDate()}. ${MONTHS[due.getMonth()].toLowerCase()}` : "næste undervisningsdag",
+    };
+  });
 }
 
 const EVENTS_5 = buildGrade5Events();
@@ -89,7 +111,7 @@ export default function Home() {
       <button className="today" onClick={() => setCursor(new Date(2026, 7, 24))}>Til denne uge</button>
     </section>
 
-    {grade === "7. klasse" ? <section className="empty"><p className="eyebrow">7. KLASSE</p><h2>Kalenderen er klar til din plan</h2><p>Skift tilbage til 5. klasse for at se den udfyldte matematikplan. 7. klasse har endnu ingen planlagte forløb.</p></section> : view === "month" ? <section className="calendar-card">
+    {grade === "7. klasse" ? <section className="empty"><p className="eyebrow">7. KLASSE · MATERIALER KLAR</p><h2>Jeg mangler kun dit skema</h2><p>Grundbogen begynder med kapitlet <strong>Tallene</strong> (s. 4), og træningshæftet er registreret. Skriv blot hvilke ugedage og hvor mange minutter du har 7. klasse, så får den samme daglige struktur: “Til i dag” → gennemgang → aktivitet → “Til næste gang”.</p></section> : view === "month" ? <section className="calendar-card">
       <div className="weekday-row">{WEEKDAYS.map((day) => <div key={day}>{day}</div>)}</div>
       <div className="month-grid">{monthDays.map((day) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day); const outside = day.getMonth() !== cursor.getMonth();
@@ -100,7 +122,7 @@ export default function Home() {
     </section> : <section className="week-card">
       {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((day) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day);
-        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}><div className="week-date"><span>{WEEKDAYS[i]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>{holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}><p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span></div> : <p className="no-event">Ingen fast matematiktime</p>}</article>;
+        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}><div className="week-date"><span>{WEEKDAYS[i]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>{holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}><p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span><div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div></div> : <p className="no-event">Ingen fast matematiktime</p>}</article>;
       })}
     </section>}
 
