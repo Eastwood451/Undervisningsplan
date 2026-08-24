@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 
 type ClassName = "5. klasse" | "7. klasse";
-type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; review: string; doNow: string; homework: string; due: string };
+type CalendarEvent = { date: string; minutes: number; title: string; detail: string; chapter: number; book: string; workbook: string; review: string; doNow: string; homework: string; due: string };
+type LessonMaterial = { book: string; workbook: string; homework: string };
 
 const MONTHS = ["Januar", "Februar", "Marts", "April", "Maj", "Juni", "Juli", "August", "September", "Oktober", "November", "December"];
 const WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -26,14 +27,56 @@ const CHAPTERS = [
   ["Tal og bogstaver", "s. 126–143", ["Samtalebillede og mønstre", "Nyt torv, Thomsens tal og indhegning", "Skridtformel og figurtal", "Viden om variable og ligninger", "Breddeopgaver", "Eftertanken og EVA"]],
   ["Data og chance", "s. 144–164", ["Samtalebillede og data", "De sidste tigre og Fuglested dyrehandel", "Terning Royale og undersøgelser", "Viden om data og chance", "Breddeopgaver", "Eftertanken og EVA"]],
 ] as const;
-const TRAINING_START = [4, 12, 20, 28, 36, 44, 50, 56];
 const CHAPTERS_7 = [
   ["Tallene", "grundbog s. 4–21"], ["Forhold og figurer", "grundbog s. 22–41"],
   ["Regn med tallene", "grundbog s. 42–67"], ["Data og chance", "grundbog s. 68–89"],
   ["Formler og ligninger", "grundbog s. 90–107"], ["Flade og rum", "grundbog s. 108–123"],
   ["Sammenhænge og grafer", "grundbog s. 124–141"], ["Mønstre og figurer", "grundbog s. 142–slut"],
 ] as const;
-const TRAINING_7_START = [2, 6, 12, 20];
+const GRADE_5_CHAPTER_1: LessonMaterial[] = [
+  { book: "Grundbog s. 4-5: samtalebillede og klasseaktiviteten.", workbook: "Øvehæfte s. 4, opg. 1-3.", homework: "Grundbog s. 18, Breddeopgaver opg. 1-4." },
+  { book: "Grundbog s. 6: Europas hovedstæder, opg. 1-3.", workbook: "Øvehæfte s. 4, opg. 4-6.", homework: "Grundbog s. 18, Breddeopgaver opg. 5-8." },
+  { book: "Grundbog s. 7: Europas hovedstæder, opg. 4-7.", workbook: "Øvehæfte s. 5, opg. 7-9.", homework: "Grundbog s. 18, Breddeopgaver opg. 9-12." },
+  { book: "Grundbog s. 8: Europas hovedstæder, opg. 8-10.", workbook: "Øvehæfte s. 5, opg. 10-12.", homework: "Grundbog s. 18, Breddeopgaver opg. 13-17." },
+  { book: "Grundbog s. 9: Europas hovedstæder, opg. 11-12.", workbook: "Øvehæfte s. 6, opg. 1-3.", homework: "Grundbog s. 19, Breddeopgaver opg. 18-21." },
+  { book: "Grundbog s. 10-11: Pizzaria Bellano, opg. 1-6.", workbook: "Øvehæfte s. 6, opg. 4-6.", homework: "Grundbog s. 19, Breddeopgaver opg. 22-25." },
+  { book: "Grundbog s. 12: Pizzaria Bellano, opg. 7-10.", workbook: "Øvehæfte s. 7, opg. 7-9.", homework: "Grundbog s. 19, Breddeopgaver opg. 26-29." },
+  { book: "Grundbog s. 13: Pizzaria Bellano, opg. 11-13 og Udfordringen.", workbook: "Øvehæfte s. 7, opg. 10-13.", homework: "Grundbog s. 19, Breddeopgaver opg. 30-34." },
+  { book: "Grundbog s. 14-15: Start et hundelufterfirma samt aktiviteterne Vandforbrug og Lommeregneren.", workbook: "Øvehæfte s. 8, opg. 14-16.", homework: "Grundbog s. 20, Breddeopgaver opg. 35-38." },
+  { book: "Grundbog s. 16-17: Viden om talsystem, regnearter, overslag, afrunding og regnemetoder.", workbook: "Øvehæfte s. 8, opg. 17-18.", homework: "Grundbog s. 20, Breddeopgaver opg. 39-42." },
+  { book: "Grundbog s. 18-19: Breddeopgaver opg. 1-34.", workbook: "Øvehæfte s. 8, opg. 19-20.", homework: "Grundbog s. 20, Breddeopgaver opg. 43-48." },
+  { book: "Grundbog s. 20-21: Breddeopgaver opg. 35-48 og Eftertanken.", workbook: "Øvehæfte s. 9, Læs og forstå, opg. 1-3.", homework: "Ingen ny lektie. Kapitel 1 er afsluttet." },
+];
+
+const GRADE_7_CHAPTER_1: LessonMaterial[] = [
+  { book: "Grundbog s. 4-5: samtalebillede og klasseaktiviteten Gæt en rækkefølge.", workbook: "Øvehæfte s. 2, opg. 1-3.", homework: "Grundbog s. 18, Breddeopgaver opg. 1-4." },
+  { book: "Grundbog s. 6-7: Populære film, opg. 1-5.", workbook: "Øvehæfte s. 2, opg. 4-6.", homework: "Grundbog s. 18, Breddeopgaver opg. 5-8." },
+  { book: "Grundbog s. 8-9: Populære film, opg. 6-9.", workbook: "Øvehæfte s. 2, opg. 7-8.", homework: "Grundbog s. 18, Breddeopgaver opg. 9-12." },
+  { book: "Grundbog s. 10-11: Populære film, opg. 10-15 og Udfordringen.", workbook: "Øvehæfte s. 3, opg. 9-10.", homework: "Grundbog s. 18, Breddeopgaver opg. 13-17." },
+  { book: "Grundbog s. 12-13: Støvmider, opg. 1-6.", workbook: "Øvehæfte s. 3, opg. 11-12.", homework: "Grundbog s. 19, Breddeopgaver opg. 18-22." },
+  { book: "Grundbog s. 14-15: Fra brøktal og decimaltal til procent samt aktiviteten Hvor mange risikerer?.", workbook: "Øvehæfte s. 4, opg. 13-15.", homework: "Grundbog s. 19, Breddeopgaver opg. 23-27." },
+  { book: "Grundbog s. 16-17: Viden om brøker, decimaltal, procent og potenser.", workbook: "Øvehæfte s. 4, opg. 16-18.", homework: "Grundbog s. 19, Breddeopgaver opg. 28-32." },
+  { book: "Grundbog s. 18: Breddeopgaver opg. 1-17.", workbook: "Øvehæfte s. 5, opg. 19-20.", homework: "Grundbog s. 19, Breddeopgaver opg. 33-36." },
+  { book: "Grundbog s. 19: Breddeopgaver opg. 18-36.", workbook: "Øvehæfte s. 5, opg. 21-22.", homework: "Grundbog s. 20, Breddeopgaver opg. 37-41." },
+  { book: "Grundbog s. 20: Breddeopgaver opg. 37-53.", workbook: "Øvehæfte s. 5, opg. 23.", homework: "Grundbog s. 20, Breddeopgaver opg. 42-46." },
+  { book: "Grundbog s. 21: Eftertanken og mundtlig forklaring.", workbook: "Øvehæfte s. 5, opg. 24-25.", homework: "Grundbog s. 20, Breddeopgaver opg. 47-53." },
+  { book: "Grundbog s. 21: fælles opsamling og evaluering af Eftertanken.", workbook: "Øvehæfte s. 5, opg. 24-25 færdiggøres og rettes.", homework: "Ingen ny lektie. Kapitel 1 er afsluttet." },
+];
+
+const GRADE_7_CHAPTER_2: LessonMaterial[] = [
+  { book: "Grundbog s. 23: kapitelintro og klasseaktiviteten Tegn et sted.", workbook: "Øvehæfte s. 6, opg. 1.", homework: "Øvehæfte s. 6, opg. 1 færdiggøres." },
+  { book: "Grundbog s. 24-25: Havnen.", workbook: "Øvehæfte s. 6, opg. 2-3.", homework: "Øvehæfte s. 6, opg. 2-3 færdiggøres." },
+  { book: "Grundbog s. 26-27: Øerne.", workbook: "Øvehæfte s. 7, opg. 4.", homework: "Øvehæfte s. 7, opg. 4 færdiggøres." },
+  { book: "Grundbog s. 28-29: øvelser med målestoksforhold og tangens.", workbook: "Øvehæfte s. 7, opg. 5.", homework: "Øvehæfte s. 7, opg. 5 færdiggøres." },
+  { book: "Grundbog s. 30-31: Fra tegning til konstruktion og Undersøg figurens størrelse.", workbook: "Øvehæfte s. 8, opg. 6.", homework: "Øvehæfte s. 8, opg. 6 færdiggøres." },
+  { book: "Grundbog s. 32-33: Softballbane og Gæt en længde.", workbook: "Øvehæfte s. 8, opg. 7.", homework: "Øvehæfte s. 8, opg. 7 færdiggøres." },
+  { book: "Grundbog s. 34-35: Viden om forhold, målestoksforhold, længde, areal og rumfang.", workbook: "Øvehæfte s. 9, opg. 8.", homework: "Øvehæfte s. 9, opg. 8 færdiggøres." },
+  { book: "Grundbog s. 36-37: Breddeopgaver.", workbook: "Øvehæfte s. 9, opg. 9-10.", homework: "Øvehæfte s. 9, opg. 9-10 færdiggøres." },
+  { book: "Grundbog s. 38-39: Breddeopgaver og faglig forklaring.", workbook: "Øvehæfte s. 10, opg. 11-12.", homework: "Øvehæfte s. 10, opg. 11-12 færdiggøres." },
+  { book: "Grundbog s. 40-41: kapitlets afsluttende opgaver.", workbook: "Øvehæfte s. 10, opg. 13-14.", homework: "Øvehæfte s. 10, opg. 13-14 færdiggøres." },
+  { book: "Grundbog s. 40-41: opsamling og Eftertanken.", workbook: "Øvehæfte s. 11, opg. 15-16.", homework: "Øvehæfte s. 11, opg. 15-16 færdiggøres." },
+  { book: "Grundbog s. 41: evaluering af kapitlet.", workbook: "Øvehæfte s. 11, opg. 17.", homework: "Ingen ny lektie. Kapitel 2 er afsluttet." },
+];
 
 const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -44,8 +87,31 @@ const isTeachingDay = (d: Date) => d.getDay() >= 1 && d.getDay() <= 5 && !inHoli
 const phaseFor = (lesson: number) => lesson <= 2 ? 0 : lesson <= 6 ? 1 : lesson <= 8 ? 2 : lesson === 9 ? 3 : lesson <= 11 ? 4 : 5;
 const phaseEnd = (lesson: number) => [2, 6, 8, 9, 11, 12].find((end) => lesson <= end) ?? 12;
 
+function materialForGrade5(chapter: number, lesson: number): LessonMaterial {
+  if (chapter === 1) return GRADE_5_CHAPTER_1[lesson - 1];
+  return {
+    book: `Grundbog ${CHAPTERS[chapter - 1][1]}: den konkrete dagside findes ikke i den indlæste rensede PDF, som stopper ved s. 23.`,
+    workbook: "Øvehæftets konkrete side og opgavenummer er ikke dokumenteret i de indlæste scanninger for denne lektion.",
+    homework: "Ingen opgave angivet, før den manglende bogside er indlæst.",
+  };
+}
+
+function materialForGrade7(chapter: number, lesson: number): LessonMaterial {
+  if (chapter === 1) return GRADE_7_CHAPTER_1[lesson - 1];
+  if (chapter === 2) return GRADE_7_CHAPTER_2[lesson - 1];
+  return {
+    book: `${CHAPTERS_7[chapter - 1][1]}: den konkrete dagside findes ikke i den indlæste rensede PDF, som stopper ved s. 43.`,
+    workbook: "Øvehæftets konkrete side og opgavenummer er ikke dokumenteret i de indlæste scanninger for denne lektion.",
+    homework: "Ingen opgave angivet, før den manglende bogside er indlæst.",
+  };
+}
+
+function combineMaterial(materials: LessonMaterial[], key: "book" | "workbook") {
+  return materials.map((material) => material[key]).join(" Derefter: ");
+}
+
 function buildGrade5Events(): CalendarEvent[] {
-  const raw: Omit<CalendarEvent, "review" | "doNow" | "homework" | "due">[] = [];
+  const raw: Array<Omit<CalendarEvent, "book" | "workbook" | "review" | "doNow" | "homework" | "due"> & { lesson: number; units: number }> = [];
   let date = new Date(2026, 7, 20);
   let chapter = 0;
   let lesson = 1;
@@ -56,6 +122,7 @@ function buildGrade5Events(): CalendarEvent[] {
       const [name, pages, phases] = CHAPTERS[chapter];
       raw.push({
         date: iso(date), minutes: units * 45, chapter: chapter + 1,
+        lesson, units,
         title: `Kapitel ${chapter + 1}: ${name}`,
         detail: `Lektion ${lesson}${units === 2 ? `–${lesson + 1}` : ""} af 12 · ${phases[phaseFor(lesson)]} · ${pages}`,
       });
@@ -65,24 +132,26 @@ function buildGrade5Events(): CalendarEvent[] {
     date = addDays(date, 1);
   }
   return raw.map((event, index) => {
-    const lessonMatch = event.detail.match(/Lektion (\d+)/);
-    const lesson = Number(lessonMatch?.[1] ?? 1);
-    const trainingPage = TRAINING_START[event.chapter - 1] + Math.min(4, Math.floor((lesson - 1) / 2));
+    const materials = Array.from({ length: event.units }, (_, offset) => materialForGrade5(event.chapter, event.lesson + offset));
+    const lastMaterial = materials[materials.length - 1];
     const next = raw[index + 1];
     const due = next ? new Date(`${next.date}T12:00:00`) : null;
-    const extra = event.chapter === 1 && lesson >= 4 && lesson <= 8
+    const extra = event.chapter === 1 && event.lesson >= 4 && event.lesson <= 8
       ? "Brug ekstraarket ‘Hjælpeark Europas hovedstæder’ til elever, der ikke kan komme i gang."
-      : lesson === 9 ? "Brug kapitlets ‘Viden om’-side og lad eleverne markere regel og eksempel med to farver."
-      : lesson === 12 ? "Brug EVA-arket og facit kun efter eleverne har afleveret deres eget svar."
+      : event.lesson === 9 ? "Brug Grundbog s. 16-17 som fælles opslagsværk, når eleverne forklarer deres metode."
+      : event.lesson === 12 ? "Brug EVA-arket og facit kun efter eleverne har afleveret deres eget svar."
       : "Brug ingen ekstraark, medmindre en elev har brug for et hjælpeark.";
-    const homework = lesson === 12
-      ? "Ingen ny lektie. Kapitlet afsluttes med EVA og eftertanke."
-      : `Træningshæfte s. ${trainingPage}: lav de opgaver, der hører til dagens emne. Skriv mellemregning i hæftet.`;
+    const previous = raw[index - 1];
+    const previousHomework = previous
+      ? materialForGrade5(previous.chapter, previous.lesson + previous.units - 1).homework
+      : null;
     return {
       ...event,
-      review: index === 0 ? "Ingen lektie — dette er årets første planlagte KonteXt+-lektion." : raw[index - 1].chapter === event.chapter ? `Træningshæfte: ${TRAINING_START[event.chapter - 1] + Math.min(4, Math.floor((Math.max(1, lesson - 2) - 1) / 2))}. Gennemgå svar og rettearbejde først.` : "Ingen lektie fra et nyt kapitel. Brug 5 minutter på at hente viden frem fra det afsluttede kapitel.",
-      doNow: `Grundbog ${event.detail}. Derefter arbejder eleverne i træningshæftet på s. ${trainingPage}. ${extra}`,
-      homework,
+      book: combineMaterial(materials, "book"),
+      workbook: combineMaterial(materials, "workbook"),
+      review: index === 0 ? "Ingen lektie — dette er årets første planlagte KonteXt+-lektion." : previousHomework ? `Til i dag havde eleverne: ${previousHomework} Gennemgå opgaverne først; eleverne retter fejl med en anden farve.` : "Ingen lektie til i dag.",
+      doNow: `Gennemgå først grundbogssiderne fælles. Lad derefter eleverne løse de angivne opgaver i øvehæftet. ${extra}`,
+      homework: lastMaterial.homework,
       due: due ? `${WEEKDAYS[(due.getDay() + 6) % 7]}. ${due.getDate()}. ${MONTHS[due.getMonth()].toLowerCase()}` : "næste undervisningsdag",
     };
   });
@@ -91,29 +160,31 @@ function buildGrade5Events(): CalendarEvent[] {
 const EVENTS_5 = buildGrade5Events();
 
 function buildGrade7Events(): CalendarEvent[] {
-  const raw: Omit<CalendarEvent, "review" | "doNow" | "homework" | "due">[] = [];
+  const raw: Array<Omit<CalendarEvent, "book" | "workbook" | "review" | "doNow" | "homework" | "due"> & { lesson: number }> = [];
   let date = new Date(2026, 7, 24); let chapter = 0; let lesson = 1;
   while (chapter < CHAPTERS_7.length) {
     if (isTeachingDay(date) && [1, 2, 4, 5].includes(date.getDay())) {
       const [name, pages] = CHAPTERS_7[chapter];
       const minutes = date.getDay() === 5 ? 75 : 45;
-      raw.push({ date: iso(date), minutes, chapter: chapter + 1, title: `Kapitel ${chapter + 1}: ${name}`, detail: `Lektion ${lesson} af 12 · ${pages}` });
+      raw.push({ date: iso(date), minutes, chapter: chapter + 1, lesson, title: `Kapitel ${chapter + 1}: ${name}`, detail: `Lektion ${lesson} af 12 · ${pages}` });
       lesson += 1;
       if (lesson === 13) { chapter += 1; lesson = 1; }
     }
     date = addDays(date, 1);
   }
   return raw.map((event, index) => {
-    const lesson = Number(event.detail.match(/Lektion (\d+)/)?.[1] ?? 1);
-    const trainingStart = TRAINING_7_START[event.chapter - 1];
-    const trainingPage = trainingStart ? trainingStart + Math.min(3, Math.floor((lesson - 1) / 3)) : null;
+    const material = materialForGrade7(event.chapter, event.lesson);
     const next = raw[index + 1]; const dueDate = next ? new Date(`${next.date}T12:00:00`) : null;
-    const homework = lesson === 12 ? "Ingen ny lektie. Skriv i stedet en kort faglig eftertanke i hæftet." : trainingPage ? `Træningshæfte s. ${trainingPage}: lav dagens opgaver og vis mellemregning.` : "Grundbog: genlæs dagens eksempel og skriv tre linjer med regel, eksempel og forklaring i hæftet.";
+    const previous = raw[index - 1];
+    const previousHomework = previous ? materialForGrade7(previous.chapter, previous.lesson).homework : null;
     return {
       ...event,
-      review: index === 0 ? "Ingen lektie — første time i 7. klasse-forløbet." : raw[index - 1].chapter === event.chapter ? "Gennemgå først den afleverede lektie. Eleverne retter én fejl med en anden farve." : "Ingen lektie fra et nyt kapitel. Hent nøgleord frem fra det foregående kapitel.",
-      doNow: trainingPage ? `Grundbog ${event.detail}. Derefter træningshæfte s. ${trainingPage}. Fredag bruges de ekstra 30 minutter til forklaring, makkerkontrol og én grubler.` : `Grundbog ${event.detail}. Eleverne løser dagens opgaver i hæftet med fuld forklaring. Fredag bruges de ekstra 30 minutter til en udfordringsopgave eller GeoGebra.`,
-      homework, due: dueDate ? `${WEEKDAYS[(dueDate.getDay() + 6) % 7]}. ${dueDate.getDate()}. ${MONTHS[dueDate.getMonth()].toLowerCase()}` : "næste undervisningsdag",
+      book: material.book,
+      workbook: material.workbook,
+      review: index === 0 ? "Ingen lektie — første time i 7. klasse-forløbet." : previousHomework ? `Til i dag havde eleverne: ${previousHomework} Gennemgå svarene først; eleverne retter én fejl med en anden farve.` : "Ingen lektie til i dag.",
+      doNow: `Gennemgå først den angivne grundbogsside. Lad derefter eleverne løse præcis de angivne opgaver i øvehæftet.${event.minutes === 75 ? " Brug de sidste 30 minutter til makkerkontrol og en faglig forklaring." : ""}`,
+      homework: material.homework,
+      due: dueDate ? `${WEEKDAYS[(dueDate.getDay() + 6) % 7]}. ${dueDate.getDate()}. ${MONTHS[dueDate.getMonth()].toLowerCase()}` : "næste undervisningsdag",
     };
   });
 }
@@ -160,7 +231,14 @@ export default function Home() {
     </section> : <section className="week-card">
       {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map((day, dayIndex) => {
         const event = eventsByDate.get(iso(day)); const holiday = inHoliday(day);
-        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}><div className="week-date"><span>{WEEKDAYS[dayIndex]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>{holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}><p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span><div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div></div> : <p className="no-event">Ingen fast matematiktime</p>}</article>;
+        return <article key={iso(day)} className={`week-day ${event ? "has-event" : ""}`}>
+          <div className="week-date"><span>{WEEKDAYS[dayIndex]}</span><strong>{day.getDate()}</strong><small>{MONTHS[day.getMonth()].toLowerCase()}</small></div>
+          {holiday ? <p className="holiday-text">{holiday}</p> : event ? <div className={`event chapter-${event.chapter}`}>
+            <p>{event.minutes} minutter</p><h3>{event.title}</h3><span>{event.detail}</span>
+            <div className="materials"><b>Slå op i grundbogen</b><p>{event.book}</p><b>Øvehæfte</b><p>{event.workbook}</p></div>
+            <div className="agenda"><b>Til i dag</b><p>{event.review}</p><b>Derefter</b><p>{event.doNow}</p><b>Til {event.due}</b><p>{event.homework}</p></div>
+          </div> : <p className="no-event">Ingen fast matematiktime</p>}
+        </article>;
       })}
     </section>}
 
