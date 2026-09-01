@@ -116,16 +116,16 @@ export default function WeeklySchedulePrint() {
           <th>{time}</th>
           {DAYS.map((day, column) => {
             const entry = entryFor(column, row, changes);
-            return <td key={day} className={entry?.kind ?? ""}>{entry?.text.split("\n").map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}</td>;
+            return <td key={day} className={entry ? `schedule-${entry.kind}` : ""}>{entry?.text.split("\n").map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}</td>;
           })}
         </tr>)}</tbody>
       </table>
 
       <div className="schedule-legend">
-        <span><i className="fixed" />Fast undervisning</span>
-        <span><i className="support" />Fast støttetime</span>
-        <span><i className="weekly" />Ændring fra ugelisten</span>
-        <span><i className="duty" />Gård-/gangvagt</span>
+        <span><i className="schedule-fixed" />Fast undervisning</span>
+        <span><i className="schedule-support" />Fast støttetime</span>
+        <span><i className="schedule-weekly" />Ændring fra ugelisten</span>
+        <span><i className="schedule-duty" />Gård-/gangvagt</span>
       </div>
       <footer>
         <span>Prioritet ved overlap: 5./7. klasse og vagter &gt; ugelisten &gt; faste støttetimer.</span>
