@@ -462,6 +462,7 @@ export default function Home() {
 
     <section className="toolbar" aria-label="Kalenderstyring">
       <div className="view-switch"><button onClick={() => setView("month")} className={view === "month" ? "selected" : ""}>Måned</button><button onClick={() => setView("week")} className={view === "week" ? "selected" : ""}>Uge</button><button onClick={() => setView("day")} className={view === "day" ? "selected" : ""}>Dag</button></div>
+      <a className="schedule-link" href="?ugeskema=print" target="_blank" rel="noreferrer">Ugeskema</a>
       <div className="navigator"><button aria-label="Forrige" onClick={previous}>‹</button><strong>{navigatorLabel}</strong><button aria-label="Næste" onClick={next}>›</button></div>
       <button className="today" onClick={() => setCursor(new Date(2026, 7, 24))}>{view === "day" ? "I dag" : "Til denne uge"}</button>
     </section>
