@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import Home from "../app/page";
+import WeeklySchedulePrint from "../app/weekly-schedule";
 import "../app/globals.css";
 
 class AppErrorBoundary extends React.Component<
@@ -24,7 +25,7 @@ class AppErrorBoundary extends React.Component<
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <Home />
+      {new URLSearchParams(window.location.search).get("ugeskema") === "print" ? <WeeklySchedulePrint /> : <Home />}
     </AppErrorBoundary>
   </React.StrictMode>,
 );
