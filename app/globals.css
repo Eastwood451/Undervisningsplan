@@ -29,3 +29,12 @@ button { font:inherit; cursor:pointer; } main { max-width:1240px; margin:auto; p
   .schedule-table .schedule-break td,.schedule-table .schedule-break th { height:6mm; }
   .schedule-legend { margin-top:4mm; }
 }
+
+/* Ugeskema: to aktiviteter i samme felt (fx SPS + ugelisten) vises begge. */
+.schedule-table td.schedule-overlap { padding: 0; background: #fff; }
+.schedule-table td.schedule-overlap .schedule-entry { padding: 3px 4px; }
+.schedule-table td.schedule-overlap .schedule-entry + .schedule-entry { border-top: 1px dashed #b8c1c8; }
+.schedule-table .schedule-entry-fixed { color: #113a5d; background: #d9eaf7; }
+.schedule-table .schedule-entry-support { color: #7a244a; background: #f7d7e5; }
+.schedule-table .schedule-entry-weekly { color: #145a4a; background: #d8f0ea; }
+.schedule-table .schedule-entry-duty { color: #7a3e00; background: #fce4c8; }

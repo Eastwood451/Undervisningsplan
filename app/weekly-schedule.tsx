@@ -18,16 +18,11 @@ const TIMES = [
 const BREAK_ROWS = new Set([2, 5, 7, 9]);
 
 const FIXED: Record<string, Entry> = {
-  "0-1": { text: "7. kl. matematik", kind: "fixed" },
   "0-3": { text: "5. kl. matematik", kind: "fixed" },
-  "1-1": { text: "7. kl. matematik", kind: "fixed" },
   "1-3": { text: "5. kl. matematik", kind: "fixed" },
   "1-4": { text: "5. kl. matematik", kind: "fixed" },
   "3-0": { text: "5. kl. matematik", kind: "fixed" },
   "3-1": { text: "5. kl. matematik", kind: "fixed" },
-  "3-4": { text: "7. kl. matematik", kind: "fixed" },
-  "4-0": { text: "7. kl. matematik", kind: "fixed" },
-  "4-1": { text: "7. kl. matematik", kind: "fixed" },
 };
 
 const DUTIES: Record<string, Entry> = {
@@ -37,20 +32,22 @@ const DUTIES: Record<string, Entry> = {
   "4-5": { text: "VAGT 11.55-12.05\nmed Julie", kind: "duty" },
 };
 
-const SUPPORT: Record<string, Entry> = {
-  "0-0": { text: "STØTTE\n6. kl. matematik", kind: "support" },
-  "0-4": { text: "STØTTE\n8. kl. matematik", kind: "support" },
-  "0-6": { text: "STØTTE\n9. kl. naturfag", kind: "support" },
-  "1-0": { text: "STØTTE\n8. kl. dansk", kind: "support" },
-  "1-6": { text: "STØTTE\n9. kl. matematik", kind: "support" },
-  "1-8": { text: "STØTTE\n9. kl. matematik", kind: "support" },
-  "3-3": { text: "STØTTE\n6. kl. matematik", kind: "support" },
-  "3-6": { text: "STØTTE\n8. kl. matematik", kind: "support" },
-  "3-8": { text: "STØTTE\n8. kl. matematik", kind: "support" },
-  "4-3": { text: "STØTTE\n8. kl. matematik", kind: "support" },
-  "4-4": { text: "STØTTE\n9. kl. matematik", kind: "support" },
-  "4-6": { text: "STØTTE\n9. kl. matematik", kind: "support" },
-  "4-8": { text: "STØTTE\n7. kl. dansk", kind: "support" },
+// SPS 2026-2027: faste SPS-blokke. De vises altid, også når der ligger en anden aktivitet i samme felt.
+const SPS: Record<string, Entry> = {
+  "0-0": { text: "SPS 6 mat", kind: "support" },
+  "0-1": { text: "SPS", kind: "support" },
+  "0-4": { text: "SPS 8 mat", kind: "support" },
+  "0-6": { text: "SPS 9 nf", kind: "support" },
+  "1-0": { text: "SPS 8 da", kind: "support" },
+  "1-6": { text: "SPS 9 mat", kind: "support" },
+  "1-8": { text: "SPS 9 mat", kind: "support" },
+  "3-3": { text: "SPS 6 mat", kind: "support" },
+  "3-6": { text: "SPS 8 mat", kind: "support" },
+  "3-8": { text: "SPS 8 mat", kind: "support" },
+  "4-3": { text: "SPS 8 mat", kind: "support" },
+  "4-4": { text: "SPS 9 mat", kind: "support" },
+  "4-6": { text: "SPS 9 mat", kind: "support" },
+  "4-8": { text: "SPS 7 da", kind: "support" },
 };
 
 const WEEKS: Array<{ week: number; dates: string[]; changes: Record<string, Entry> }> = [
@@ -59,7 +56,6 @@ const WEEKS: Array<{ week: number; dates: string[]; changes: Record<string, Entr
     dates: ["24/8", "25/8", "26/8", "27/8", "28/8"],
     changes: {
       "1-0": { text: "6. kl. dansk", kind: "weekly" },
-      "3-3": { text: "Støtte, 7. kl.", kind: "weekly" },
       "4-3": { text: "8. kl. matematik", kind: "weekly" },
       "4-4": { text: "9. kl. matematik", kind: "weekly" },
       "4-6": { text: "9. kl. matematik", kind: "weekly" },
@@ -79,9 +75,7 @@ const WEEKS: Array<{ week: number; dates: string[]; changes: Record<string, Entr
       "2-6": { text: "6. kl. dansk", kind: "weekly" },
       "2-8": { text: "6. kl. dansk", kind: "weekly" },
       "2-10": { text: "9. kl. tysk", kind: "weekly" },
-      "3-3": { text: "7. kl. tysk", kind: "weekly" },
       "3-6": { text: "1. kl. musik", kind: "weekly" },
-      "4-3": { text: "7. kl. tysk", kind: "weekly" },
     },
   },
   { week: 37, dates: ["7/9", "8/9", "9/9", "10/9", "11/9"], changes: {} },
@@ -92,9 +86,11 @@ const WEEKS: Array<{ week: number; dates: string[]; changes: Record<string, Entr
   },
 ];
 
-function entryFor(day: number, row: number, changes: Record<string, Entry>) {
+// Fast undervisning/vagt går forud for ugelisten; en SPS-blok i samme felt vises sammen med den.
+function entriesFor(day: number, row: number, changes: Record<string, Entry>): Entry[] {
   const key = `${day}-${row}`;
-  return FIXED[key] ?? DUTIES[key] ?? changes[key] ?? SUPPORT[key];
+  const main = FIXED[key] ?? DUTIES[key] ?? changes[key];
+  return [main, SPS[key]].filter((entry): entry is Entry => Boolean(entry));
 }
 
 export default function WeeklySchedulePrint() {
@@ -115,8 +111,9 @@ export default function WeeklySchedulePrint() {
         <tbody>{TIMES.map((time, row) => <tr className={BREAK_ROWS.has(row) ? "schedule-break" : ""} key={time}>
           <th>{time}</th>
           {DAYS.map((day, column) => {
-            const entry = entryFor(column, row, changes);
-            return <td key={day} className={entry ? `schedule-${entry.kind}` : ""}>{entry?.text.split("\n").map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}</td>;
+            const entries = entriesFor(column, row, changes);
+            const className = entries.length > 1 ? "schedule-overlap" : entries[0] ? `schedule-${entries[0].kind}` : "";
+            return <td key={day} className={className}>{entries.map((entry, entryIndex) => <div className={`schedule-entry schedule-entry-${entry.kind}`} key={entryIndex}>{entry.text.split("\n").map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}</div>)}</td>;
           })}
         </tr>)}</tbody>
       </table>
@@ -128,7 +125,7 @@ export default function WeeklySchedulePrint() {
         <span><i className="schedule-duty" />Gård-/gangvagt</span>
       </div>
       <footer>
-        <span>Prioritet ved overlap: 5./7. klasse og vagter &gt; ugelisten &gt; faste støttetimer.</span>
+        <span>Prioritet ved overlap: 5. klasse og vagter &gt; ugelisten &gt; faste støttetimer.</span>
         <span>Torsdag: Jacob + Laura dækker ved sygdom.</span>
         <small>Side {pageIndex + 1} af {WEEKS.length}</small>
       </footer>
