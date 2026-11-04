@@ -496,6 +496,6 @@ export default function Home() {
       </div>
     </section>}
 
-    <section className="legend"><span><i className="dot maths" /> {view === "day" ? "Begge klasser" : `Matematik – ${grade}`}</span><span><i className="dot holiday-dot" /> Skoleferie</span><span><i className="dot successor-dot" /> Efterfølgerens plan fra 1. april 2027</span><span>{view === "day" ? "Dagsvisningen samler 5. og 7. klasse på den valgte dato." : grade === "5. klasse" ? "Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min." : "Fast skema: mandag 9.00–9.45 · tirsdag 9.00–9.45 · torsdag 10.50–11.35 · fredag 8.30–9.45. Fredag er øveblok og tæller ikke som en af kapitlets 12 lektioner."}</span></section>
+    <section className="legend"><span><i className="dot maths" /> {view === "day" ? "Begge klasser" : `Matematik – ${grade}`}</span><span><i className="dot holiday-dot" /> Skoleferie</span><span><i className="dot successor-dot" /> Efterfølgerens plan fra 1. april 2027</span>{view === "day" ? <span>Dagsvisningen samler 5. og 7. klasse på den valgte dato.</span> : grade === "5. klasse" ? <span>Fast skema: mandag 45 min. · tirsdag 90 min. · torsdag 90 min.</span> : null}</section>
   </main>;
 }
