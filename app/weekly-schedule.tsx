@@ -15,6 +15,7 @@ const TIMES = [
   "13.45-13.55",
   "13.55-14.40",
 ];
+// Frikvarterer (09.45-10.05, 11.35-12.05, 12.50-13.00, 13.45-13.55) vises som en gennemgående gul bjælke.
 const BREAK_ROWS = new Set([2, 5, 7, 9]);
 
 const FIXED: Record<string, Entry> = {
@@ -122,6 +123,7 @@ export default function WeeklySchedulePrint() {
         <span><i className="schedule-fixed" />Fast undervisning</span>
         <span><i className="schedule-support" />Fast støttetime</span>
         <span><i className="schedule-weekly" />Ændring fra ugelisten</span>
+        <span><i className="schedule-break-swatch" />Frikvarter</span>
         <span><i className="schedule-duty" />Gård-/gangvagt</span>
       </div>
       <footer>

@@ -38,3 +38,11 @@ button { font:inherit; cursor:pointer; } main { max-width:1240px; margin:auto; p
 .schedule-table .schedule-entry-support { color: #7a244a; background: #f7d7e5; }
 .schedule-table .schedule-entry-weekly { color: #145a4a; background: #d8f0ea; }
 .schedule-table .schedule-entry-duty { color: #7a3e00; background: #fce4c8; }
+
+/* Ugeskema: frikvarterer som gennemgående gul bjælke; vagter vises som orange felt oven på bjælken. */
+.schedule-table tr.schedule-break th,.schedule-table tr.schedule-break td,.schedule-table .schedule-break td:not(.schedule-duty) { color: #5c4300; background: #ffe14d; border-color: #d9b400; }
+.schedule-table tr.schedule-break td.schedule-duty { background: #ffe14d; padding: 3px 6px; }
+.schedule-table tr.schedule-break td.schedule-duty .schedule-entry-duty { color: #4a2200; background: #fdba74; border: 1.5px solid #c2410c; border-radius: 5px; padding: 1px 4px; box-shadow: 0 1px 2px #7a3e0040; }
+.schedule-legend .schedule-break-swatch { background: #ffe14d; border: 1px solid #d9b400; }
+.schedule-legend .schedule-duty { background: #fdba74; border: 1px solid #c2410c; }
+@media print { .schedule-table tr.schedule-break th,.schedule-table tr.schedule-break td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
